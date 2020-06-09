@@ -28,139 +28,75 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <iostream>
-#include "mytime.h"
 #include <sched.h>
+#include <chrono>
+#include <memory>
+#include <algorithm>
+
+#include <parallel_for_each.hpp>
+#include <sample_class.cpp>
 
 using namespace std;
-
-/**
- * Inner product
- */
+using hclock=std::chrono::high_resolution_clock;
 
 int main (int argc, char *argv[]) {
 
-  int numThreads, tid;
+	double time;
+	unsigned int P;
+	unsigned long long int n;
+	//std::vector<std::shared_ptr<sample>> objects;
+	std::vector<sample> objects;
+	auto begin_time=hclock::now(), end_time = hclock::now();
 
-  double *x,*y, time, *partial_result, result=0;
-  int P, n, i;
-  CLOCK_TYPE begin, end;
+	/* get programs parameters */
+	P=atoi(argv[1]);
+	n=atoll(argv[2]);
 
-  P=atoi(argv[1]);
-  n=atoll(argv[2]);
+	/* initialization */
+	for(unsigned long long int i=0; i<n; i++){
+		objects.push_back(sample(3.14));
+	}
 
-  x = (double*)malloc(n*sizeof(double));
-  y = (double*)malloc(n*sizeof(double));
+	cout << "Initial values:" << endl;
 
-  partial_result = (double*)malloc(P*sizeof(double));
+	for(unsigned long long int i=0; i<1; i++){
+		cout << "Position:(" << i << "): "<< objects.at(i).get_number() << endl ;
+	}
 
-  /* initialization */
+	auto square = [](sample& c)->void { c.square_root(); };
 
-  for(int i=0; i<n; i++){
-	  x[i]=1.0;
-	  y[i]=1.0;
-  }
+	/* sequential version */
+	begin_time = hclock::now();
+	std::for_each(objects.begin(), objects.end(), square);
+	end_time =  hclock::now();
 
-  for(int i=0; i<P; i++){
-	  partial_result[i]=0.0;
-  }
+	cout << "Values after sequential:" << endl;
 
-  /* sequential version */
+	for(unsigned long long int i=0; i<1; i++){
+		cout << "Position:(" << i << "): "<< objects.at(i).get_number() << endl ;
+	}
 
-  GETTIME(begin);
+	/*calculate and print time */
+	std::cout << "Sequential time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
 
-  for(int i=0; i<n; i++){
-	  result+=x[i]*y[i];
-  }
+	/* initialization */
+	for(unsigned long long int i=0; i<n; i++){
+		objects.at(i).set_number(3.14);
+	}
 
-  GETTIME(end);
-  DIFTIME(end,begin,time);
+	/* parallel version */
+	begin_time = hclock::now();
+	parallel::parallel_for_each_iterator(objects.begin(), objects.end(), square, P);
+	end_time =  hclock::now();
 
-  cout << "Sequential -> Result:" << result << " time: "<< time << endl ;
+	cout << "Values after parallel:" << endl;
 
-  result=0;
+	for(unsigned long long int i=0; i<1; i++){
+		cout << "Position:(" << i << "): "<< objects.at(i).get_number() << endl ;
+	}
 
-  /* parallel version */
-
-  /* inner product */
-/*  #pragma omp parallel shared (x,y,partial_result) private(i){
-  	  int tid   = omp_get_thread_num();
-  	  int procs = omp_get_num_threads();
-  	  unsigned long len;
-  	  cpu_set_t mascara;
-  	  CPU_ZERO (&mascara);
-
-  	  //Esto es para 1 Thread por core
-  	  len = sizeof(cpu_set_t);
-  	  CPU_SET (tid, &mascara);
-//		if (sched_setaffinity(0, len, &mascara) < 0)
-//			printf("\n\nError :: sched_setaffinity\n\n");
-*/
-
-
-
-  int sum=0, psum=0;
-
-
-//	#pragma omp parallel for reduction (+:sum) //shared (x,y,partial_result) private(i)
-//  	  tid   = omp_get_thread_num();
-//		#pragma omp for schedule(static)
-//  	  	  	  for(i=0; i<n; i++){
-//  		  for(int j=0;j<100000;j++){
-//  			  partial_result[0]+=x[i]*y[i];
-//  		  }
-			//				#pragma omp critical
-//				cout << "ID:" << omp_get_thread_num()  << endl ;
-//  	  	  	  }
-
-  GETTIME(begin);
-
-#pragma omp parallel private(i,tid,psum) shared(x,y) num_threads(P)
-{
-psum = 0.0;
-tid = omp_get_thread_num();
-
-#pragma omp for schedule(static) reduction(+:result)
-  for (i=0; i<n; i++) {
-		  result += (x[i] * y[i]);
-//      psum = result;
-  }
-//printf("Thread %d partial sum = %f\n",tid, psum);
-//cout << "Thread: " << tid << " partial sum = "<< psum << endl ;
-
-}
-	GETTIME(end);
-	DIFTIME(end,begin,time);
-
-	cout << "Parallel for -> Result:" << result << " time: "<< time << endl ;
-
-	result = 0;
-
-	GETTIME(begin);
-
-	#pragma omp parallel for schedule(static) reduction(+:result) proc_bind(spread) num_threads(P)
-		for (i=0; i<n; i++) {
-				result += (x[i] * y[i]);
-		}
-
-	GETTIME(end);
-	DIFTIME(end,begin,time);
-
-	cout << "Parallel for Spread -> Result:" << result << " time: "<< time << endl ;
-
-	result = 0;
-
-		GETTIME(begin);
-
-		#pragma omp parallel for schedule(static) reduction(+:result) proc_bind(close) num_threads(P)
-			for (i=0; i<n; i++) {
-					result += (x[i] * y[i]);
-			}
-
-		GETTIME(end);
-		DIFTIME(end,begin,time);
-
-		cout << "Parallel for Close -> Result:" << result << " time: "<< time << endl ;
-
+	/*calculate and print time */
+	std::cout << "Parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
 
 	return 0;
 }
