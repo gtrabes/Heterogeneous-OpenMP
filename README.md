@@ -1,1 +1,1 @@
-# OpenMPExample
+# Heterogenous OpenMP Parallel For Each
