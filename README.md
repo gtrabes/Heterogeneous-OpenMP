@@ -1,1 +1,1 @@
-# Heterogenous OpenMP Parallel For Each
+# Heterogenous OpenMP Parallel Methods
