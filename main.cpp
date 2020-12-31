@@ -33,15 +33,21 @@
 #include <memory>
 #include <algorithm>
 
-#include <parallel_for_each.hpp>
-#include <sample_class.cpp>
+
+#include <cuda_runtime_api.h>
+#include <cuda.h>
+
+
+#include "gpu_parallel_cuda.hpp"
+#include "cpu_parallel_openmp.hpp"
+#include "sample_class.cpp"
 
 using namespace std;
 using hclock=std::chrono::high_resolution_clock;
 
 int main (int argc, char *argv[]) {
 
-	double time;
+	double time, value;
 	unsigned int P;
 	unsigned long long int n;
 	//std::vector<std::shared_ptr<sample>> objects;
@@ -52,10 +58,63 @@ int main (int argc, char *argv[]) {
 	P=atoi(argv[1]);
 	n=atoll(argv[2]);
 
-	/* initialization */
+	/* initialize value to initialize sample class objects */
+	value=3.14;
+
+	int num_cuda_gpus = 0, omp_num_devices = 0;
+
+	omp_num_devices = omp_get_num_devices();
+
+	std::cout << "GPUs detected OpenMP: "<< omp_num_devices << std::endl;
+
+	cudaGetDeviceCount(&num_cuda_gpus);
+
+	std::cout << "GPUs detected Cuda: "<< num_cuda_gpus << std::endl;
+
+	printCudaVersion();
+
+
+	begin_time = hclock::now();
+
+	/* sequential initialization */
 	for(unsigned long long int i=0; i<n; i++){
-		objects.push_back(sample(3.14));
+		objects.push_back(sample(value));
 	}
+
+	end_time = hclock::now();
+
+	/*calculate and print time */
+	std::cout << "Sequential initialization time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+	objects.clear();
+
+	begin_time = hclock::now();
+
+	/* parallel initialization */
+	openmp::cpu_parallel_add_objects_to_vector_openmp(objects, value, n, P);
+
+	end_time = hclock::now();
+
+	/*calculate and print time */
+	std::cout << "CPU Parallel initialization time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+	//#pragma omp declare target
+	#pragma omp declare reduction (merge : std::vector<sample> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+	//#pragma omp end declare target
+
+	begin_time = hclock::now();
+
+	#pragma omp parallel for reduction(merge: objects)
+	for(int i=0; i<n; i++) {
+		objects.push_back(sample(value));
+	}
+
+	end_time = hclock::now();
+
+	/*calculate and print time */
+	std::cout << "GPU Parallel initialization time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+
 
 	cout << "Initial values:" << endl;
 
@@ -81,22 +140,44 @@ int main (int argc, char *argv[]) {
 
 	/* initialization */
 	for(unsigned long long int i=0; i<n; i++){
-		objects.at(i).set_number(3.14);
+		objects.at(i).set_number(value);
 	}
 
 	/* parallel version */
 	begin_time = hclock::now();
-	parallel::parallel_for_each_iterator(objects.begin(), objects.end(), square, P);
+	openmp::parallel_for_each_iterator_openmp(objects.begin(), objects.end(), square, P);
 	end_time =  hclock::now();
 
-	cout << "Values after parallel:" << endl;
+	cout << "Values after CPU parallel:" << endl;
 
 	for(unsigned long long int i=0; i<1; i++){
-		cout << "Position:(" << i << "): "<< objects.at(i).get_number() << endl ;
+		cout << "Position:(" << i<< "): "<< objects.at(i).get_number() << endl ;
 	}
 
 	/*calculate and print time */
-	std::cout << "Parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+	std::cout << "CPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+	/* initialization */
+        for(unsigned long long int i=0; i<n; i++){
+                objects.at(i).set_number(value);
+        }
+
+
+	/* parallel version */
+        begin_time = hclock::now();
+        openmp::gpu_parallel_for_each_openmp(objects, square, P);
+        end_time =  hclock::now();
+
+        cout << "Values after GPU parallel:" << endl;
+
+        for(unsigned long long int i=0; i<1; i++){
+                cout << "Position:(" << i<< "): "<< objects.at(i).get_number() << endl ;
+        }
+
+        /*calculate and print time */
+        std::cout << "GPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+
 
 	return 0;
 }
