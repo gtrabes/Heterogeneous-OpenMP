@@ -24,8 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PARALLEL_FOR_EACH_HPP
-#define PARALLEL_FOR_EACH_HPP
+#ifndef CPU_PARALLEL_OPENMP_HPP
+#define CPU_PARALLEL_OPENMP_HPP
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,10 +36,25 @@
 #include <utility>
 #include <tuple>
 
-namespace parallel {
+namespace openmp {
+
+	template<typename T>
+	void cpu_parallel_add_objects_to_vector_openmp(std::vector<T>& objects, double value, long long unsigned int n, unsigned int thread_number){
+
+		//#pragma omp declare reduction (merge : std::vector<T> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+
+		//std::vector<T>& objects = nullptr;
+
+		//#pragma omp parallel for num_threads(thread_number) schedule (static) reduction(merge: objects)
+		for(int i=0; i<n; i++) {
+			objects.push_back(T(value));
+		}
+
+	//	return objects();
+	}
 
 	template<class T, class Function>
-	void parallel_for_each_object(std::vector<T>& obj, Function& f, unsigned int thread_number){
+	void cpu_parallel_for_each_openmp(std::vector<T>& obj, Function& f, unsigned int thread_number){
 		/* set number of threads */
 		//omp_set_num_threads(thread_number);
 		size_t size = obj.size();
@@ -52,7 +67,7 @@ namespace parallel {
 	}
 
 	template<typename ITERATOR, typename FUNC>
-	void parallel_for_each_iterator(ITERATOR first, ITERATOR last, FUNC& f, unsigned int thread_number){
+	void parallel_for_each_iterator_openmp(ITERATOR first, ITERATOR last, FUNC& f, unsigned int thread_number){
 		/* set number of threads */
 		//omp_set_num_threads(thread_number);
 		size_t n = std::distance(first, last);
@@ -75,6 +90,83 @@ namespace parallel {
 //		}
 	}
 
+
+	template<class T, class Function>
+        void gpu_parallel_for_each_openmp(std::vector<T>& obj, Function& f, unsigned int thread_number){
+                /* set number of threads */
+                //omp_set_num_threads(thread_number);
+                size_t size = obj.size();
+
+		//#pragma omp declare target
+  		//auto GPUf = f;
+		//auto objGPU = obj;
+		//#pragma omp end declare target
+
+                #pragma omp target teams distribute parallel for map(tofrom:obj)
+                for(size_t i = 0; i < size; i++){
+                        f(obj[i]);
+                }
+
+        }
+
+
+	template<typename ITERATOR, typename FUNC>
+        void gpu_parallel_for_each_iterator_openmp(ITERATOR first, ITERATOR last, FUNC& f, unsigned int thread_number){
+                /* set number of threads */
+                //omp_set_num_threads(thread_number);
+                size_t n = std::distance(first, last);
+
+		#pragma omp declare target
+                auto gpuf = f;
+		auto firstgpu = *first;
+                #pragma omp end declare target
+
+                #pragma omp target
+                for(int i = 0; i < n; i++){
+                        gpuf(firstgpu);
+			firstgpu=*(first+i);
+                }
+
+//              #pragma omp parallel for firstprivate(f) shared(first,last)
+//      for (ITERATOR it = first; it != last; it++) {
+//              f(*it);
+//      }
+
+//              #pragma omp parallel for firstprivate(f) shared(first)
+//              for(size_t i = 0; i < n; i++){
+//                      auto& elem = *(first + i);
+                        // do whatever you want with elem
+//                      f(elem);
+//              }
+        }
+
+
+
+	template<typename ITERATOR, typename FUNC>
+	void cpu_parallel_min_element_openmp(ITERATOR first, ITERATOR last, unsigned int thread_number){
+		/* set number of threads */
+		//omp_set_num_threads(thread_number);
+		size_t n = std::distance(first, last);
+
+//		#pragma omp parallel for num_threads(thread_number) firstprivate(f, first)
+//		for(int i = 0; i < n; i++){
+//			f(*(i+first));
+//		}
+
+//		#pragma omp parallel for firstprivate(f) shared(first,last)
+//    	for (ITERATOR it = first; it != last; it++) {
+//    		f(*it);
+//    	}
+
+//		#pragma omp parallel for firstprivate(f) shared(first)
+//		for(size_t i = 0; i < n; i++){
+//			auto& elem = *(first + i);
+			// do whatever you want with elem
+//			f(elem);
+//		}
+	}
+
+
 }
 
-#endif //PARALLEL_FOR_EACH_HPP
+#endif //CPU_PARALLEL_OPENMP_HPP
