@@ -27,16 +27,21 @@
 #ifndef GPU_PARALLEL_CUDA_HPP
 #define GPU_PARALLEL_CUDA_HPP
 
+#include <vector>
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 
+namespace cuda {
+
 void printCudaVersion();
 
-//template<class T, class Function>
-//void gpu_parallel_for_each_cuda(std::vector<T>& obj, Function& f, unsigned int thread_number)
+template<class T, class Function>
+void gpu_parallel_for_each_cuda(std::vector<T>& obj, Function& f, unsigned int thread_number);
 
 //template<class T, class Function>
 //void gpu_parallel_find_min_element_cuda(std::vector<T>& obj, Function& f, unsigned int thread_number)
 
+}
 
 #endif //PARALLEL_FOR_EACH_HPP
+

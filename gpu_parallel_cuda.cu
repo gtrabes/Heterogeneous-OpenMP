@@ -27,7 +27,7 @@
 #ifndef GPU_PARALLEL_CUDA_CU
 #define GPU_PARALLEL_CUDA_CU
 
-#include "gpu_parallel_cuda.hpp"
+#include <gpu_parallel_cuda.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
@@ -38,51 +38,26 @@
 #include <tuple>
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+//#include <thrust/host_vector.h>
+//#include <thrust/device_vector.h>
+//#include <thrust/sort.h>
 
-//namespace gpu_parallel_openmp {
+
+namespace cuda {
+
 
 	template<class T, class Function>
-	void gpu_parallel_for_each_object(std::vector<T>& obj, Function& f, unsigned int thread_number){
+	void gpu_parallel_for_each_cuda(std::vector<T>& obj, Function& f, unsigned int thread_number){
 		/* set number of threads */
 		//omp_set_num_threads(thread_number);
 		size_t size = obj.size();
 
-		#pragma omp parallel for num_threads(thread_number) firstprivate(f) shared(obj)
-		for(size_t i = 0; i < size; i++){
-			f(obj[i]);
-		}
-
-	}
-
-	template<typename ITERATOR, typename FUNC>
-	void gpu_parallel_for_each_iterator(ITERATOR first, ITERATOR last, FUNC& f, unsigned int thread_number){
-		/* set number of threads */
-		//omp_set_num_threads(thread_number);
-		size_t n = std::distance(first, last);
-
-		//#pragma omp parallel for num_threads(thread_number) firstprivate(f, first)
-		//for(int i = 0; i < n; i++){
-		//	f(*(i+first));
+		//#pragma omp parallel for num_threads(thread_number) firstprivate(f) shared(obj)
+		//for(size_t i = 0; i < size; i++){
+		//	f(obj[i]);
 		//}
 
-		#pragma omp target
-                for(int i = 0; i < n; i++){
-                        f(*(i+first));
-                }
-
-//		#pragma omp parallel for firstprivate(f) shared(first,last)
-//    	for (ITERATOR it = first; it != last; it++) {
-//    		f(*it);
-//    	}
-
-//		#pragma omp parallel for firstprivate(f) shared(first)
-//		for(size_t i = 0; i < n; i++){
-//			auto& elem = *(first + i);
-			// do whatever you want with elem
-//			f(elem);
-//		}
 	}
-	
 	
 	void printCudaVersion()
 	{
@@ -101,8 +76,6 @@
     	std::cout << "CUDA Devices: " << num_gpus << std::endl;
 	}
 	
-	
-
-//}
+}
 
 #endif //GPU_PARALLEL_CUDA_CU

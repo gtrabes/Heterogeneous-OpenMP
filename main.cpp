@@ -37,7 +37,6 @@
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 
-
 #include "gpu_parallel_cuda.hpp"
 #include "cpu_parallel_openmp.hpp"
 #include "sample_class.cpp"
@@ -71,8 +70,8 @@ int main (int argc, char *argv[]) {
 
 	std::cout << "GPUs detected Cuda: "<< num_cuda_gpus << std::endl;
 
-	printCudaVersion();
-
+	cuda::printCudaVersion();
+	//printCudaVersion();
 
 	begin_time = hclock::now();
 
@@ -112,9 +111,7 @@ int main (int argc, char *argv[]) {
 	end_time = hclock::now();
 
 	/*calculate and print time */
-	std::cout << "GPU Parallel initialization time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
-
-
+	//std::cout << "GPU Parallel initialization time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
 
 	cout << "Initial values:" << endl;
 
@@ -163,7 +160,7 @@ int main (int argc, char *argv[]) {
         }
 
 
-	/* parallel version */
+	/* openMP GPU version */
         begin_time = hclock::now();
         openmp::gpu_parallel_for_each_openmp(objects, square, P);
         end_time =  hclock::now();
@@ -175,8 +172,53 @@ int main (int argc, char *argv[]) {
         }
 
         /*calculate and print time */
-        std::cout << "GPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+        std::cout << "OpenMP GPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
 
+        /* initialization */
+         //for(unsigned long long int i=0; i<n; i++){
+        //	 objects.at(i).set_number(value);
+         //}
+
+     	 /* cuda GPU version */
+		 //auto size = objects.size();
+
+		 //std::vector<sample> gpu_objects;
+
+		 // Allocate memory for each vector on GPU
+		 //cudaMalloc(&gpu_objects, v.size*);
+
+         //begin_time = hclock::now();
+         //cuda::gpu_parallel_for_each_cuda(objects, square, P);
+         //end_time =  hclock::now();
+
+         //cout << "Values after GPU parallel:" << endl;
+
+         //for(unsigned long long int i=0; i<1; i++){
+        //	 cout << "Position:(" << i<< "): "<< objects.at(i).get_number() << endl ;
+         //}
+
+         /*calculate and print time */
+         //std::cout << "CUDA GPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
+
+    	/* initialization */
+            for(unsigned long long int i=0; i<n; i++){
+                    objects.at(i).set_number(value);
+            }
+
+
+    	/* openMP Multi-GPU version */
+            begin_time = hclock::now();
+            openmp::multi_gpu_parallel_for_each_openmp(objects, square, P);
+            end_time =  hclock::now();
+
+            cout << "Values after Multi GPU parallel:" << endl;
+
+            for(unsigned long long int i=0; i<1; i++){
+                    cout << "Position:(" << i<< "): "<< objects.at(i).get_number() << endl ;
+            }
+
+            /*calculate and print time */
+            std::cout << "OpenMP Multi-GPU parallel time: "<< std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(end_time - begin_time).count() << std::endl;
 
 
 	return 0;

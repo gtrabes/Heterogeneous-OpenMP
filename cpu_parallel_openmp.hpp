@@ -92,7 +92,7 @@ namespace openmp {
 
 
 	template<class T, class Function>
-        void gpu_parallel_for_each_openmp(std::vector<T>& obj, Function& f, unsigned int thread_number){
+	void gpu_parallel_for_each_openmp(std::vector<T>& obj, Function& f, unsigned int thread_number){
                 /* set number of threads */
                 //omp_set_num_threads(thread_number);
                 size_t size = obj.size();
@@ -108,6 +108,44 @@ namespace openmp {
                 }
 
         }
+
+
+	template<class T, class Function>
+	void multi_gpu_parallel_for_each_openmp(std::vector<T>& obj, Function& f, unsigned int thread_number){
+		/* set number of threads */
+		//omp_set_num_threads(thread_number);
+		size_t size = obj.size();
+
+		//#pragma omp declare target
+	  	//auto GPUf = f;
+		//auto objGPU = obj;
+		//#pragma omp end declare target
+		//omp_get_num_devices();
+		int num_devices = omp_get_num_devices();
+
+		#pragma omp parallel num_threads(num_devices) proc_bind(close)
+    	{
+    		/* get thread id */
+    		size_t tid = omp_get_thread_num();
+
+    		/* if it's not last thread compute n/thread_number elements */
+    		if(tid != num_devices-1) {
+				#pragma omp target teams distribute parallel for map(tofrom:obj) device(tid)
+    			for(size_t i = (size/num_devices) * tid; i < (size/num_devices)*(tid+1); i++) {
+    				f(obj[i]);
+    			}
+    		/* if it's last thread compute till the end of the vector */
+			} else {
+				#pragma omp target teams distribute parallel for map(tofrom:obj) device(tid)
+				for(size_t i = (size/num_devices) * tid; i < size ; i++) {
+					f(obj[i]);
+				}
+			}
+    	}
+
+
+	}
+
 
 
 	template<typename ITERATOR, typename FUNC>
