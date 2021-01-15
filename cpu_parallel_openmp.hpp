@@ -123,27 +123,44 @@ namespace openmp {
 		//omp_get_num_devices();
 		int num_devices = omp_get_num_devices();
 
+		T* p = obj.data();
+
 		#pragma omp parallel num_threads(num_devices) proc_bind(close)
     	{
     		/* get thread id */
     		size_t tid = omp_get_thread_num();
 
-    		/* if it's not last thread compute n/thread_number elements */
+    		/* determine first and last element to compute */
+    		size_t initial = (size/num_devices) * tid;
+
+    		size_t last;
     		if(tid != num_devices-1) {
-				#pragma omp target teams distribute parallel for map(tofrom:obj) device(tid)
-    			for(size_t i = (size/num_devices) * tid; i < (size/num_devices)*(tid+1); i++) {
-    				f(obj[i]);
-    			}
+    			last = (size/num_devices)*(tid+1);
+    		} else {
+    			last = size;
+    		}
+
+    		/* if it's not last thread compute n/thread_number elements */
+    		//if(tid != num_devices-1) {
+			//	#pragma omp target teams distribute parallel for map(tofrom:obj[]) device(tid)
+    		//	for(size_t i = initial; i < (size/num_devices)*(tid+1); i++) {
+    		//		f(obj[i]);
+    		//	}
     		/* if it's last thread compute till the end of the vector */
-			} else {
-				#pragma omp target teams distribute parallel for map(tofrom:obj) device(tid)
-				for(size_t i = (size/num_devices) * tid; i < size ; i++) {
-					f(obj[i]);
-				}
-			}
+			//} else {
+			//	#pragma omp target teams distribute parallel for map(tofrom:obj) device(tid)
+			//	for(size_t i = initial; i < size ; i++) {
+			//		f(obj[i]);
+			//	}
+			//}
+
+    		/* compute n/thread_number elements */
+    		#pragma omp target teams distribute parallel for map(tofrom:p[initial:last]) device(tid)
+    		for(size_t i = initial; i < last; i++) {
+    			f(obj[i]);
+    		}
+
     	}
-
-
 	}
 
 
